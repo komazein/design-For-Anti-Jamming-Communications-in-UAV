@@ -101,12 +101,37 @@ class AODVRouting(BASE_routing):
             self.current_n_transmission += 1
 
     def drone_reception(self, src_drone, packet: Packet, current_ts):
-        # simple authentication: discard packets that don't carry the correct group password
-        pkt_token = getattr(packet, 'auth_token', None)
-        if pkt_token != config.GROUP_SHARED_PASSWORD:
+        # HMAC authentication + replay protection:
+        pkt_hmac = getattr(packet, 'auth_hmac', None)
+        pkt_nonce = getattr(packet, 'auth_nonce', None)
+
+        try:
+            secret = config.GROUP_SHARED_KEY.encode()
+            algo = __import__('hashlib').__getattribute__(config.HMAC_ALGO)
+            expected = __import__('hmac').new(secret, f"{packet.identifier}:{str(pkt_nonce if pkt_nonce is not None else 0)}".encode(), algo).hexdigest()
+        except Exception:
             if config.DEBUG:
-                print(f"AODV: dropped packet from {getattr(src_drone,'identifier',src_drone)} due to auth mismatch")
+                print("AODV: error computing expected HMAC")
             return
+
+        # constant-time compare
+        if not __import__('hmac').compare_digest(expected, str(pkt_hmac)):
+            if config.DEBUG:
+                print(f"AODV: dropped packet from {getattr(src_drone,'identifier',src_drone)} due to HMAC mismatch")
+            return
+
+        # replay protection: if packet timestamp exists, require it to be within window
+        if pkt_nonce is not None:
+            try:
+                if abs(current_ts - int(pkt_nonce)) > config.HMAC_TIME_WINDOW:
+                    if config.DEBUG:
+                        print(f"AODV: dropped packet from {getattr(src_drone,'identifier',src_drone)} due to HMAC timestamp outside window")
+                    return
+            except Exception:
+                # if nonce not int-castable, drop
+                if config.DEBUG:
+                    print("AODV: dropped packet due to invalid HMAC nonce")
+                return
 
         # handle AODV control packets first
         if isinstance(packet, RREQPacket):

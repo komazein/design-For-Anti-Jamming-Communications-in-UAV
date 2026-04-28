@@ -1,4 +1,6 @@
 import numpy as np
+import hmac
+import hashlib
 
 from src.utilities import config, utilities
 
@@ -105,9 +107,17 @@ class Packet(Entity):
         self.optional_data = None  # list
         self.time_delivery = None
 
-        # authentication token / group password attached to the packet
-        # if None provided, default to the simulator-wide group shared password
-        self.auth_token = auth_token if auth_token is not None else config.GROUP_SHARED_PASSWORD
+        # authentication: generate HMAC over (packet_id, time_step_creation) using shared key
+        # time_step_creation may be None for some control packets; normalize to string
+        nonce = str(self.time_step_creation) if self.time_step_creation is not None else "0"
+        msg = f"{self.identifier}:{nonce}".encode()
+        secret = config.GROUP_SHARED_KEY.encode()
+        algo = getattr(hashlib, config.HMAC_ALGO)
+        self.auth_hmac = hmac.new(secret, msg, algo).hexdigest()
+        # expose nonce for replay checks
+        self.auth_nonce = self.time_step_creation
+        # keep legacy token field for compatibility (not used for auth anymore)
+        self.auth_token = auth_token
 
         # if the packet was sent with move routing or not
         self.is_move_packet = None

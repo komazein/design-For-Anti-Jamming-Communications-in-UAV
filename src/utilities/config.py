@@ -128,3 +128,9 @@ ENABLE_PROBABILITIES = False
 # Shared password/token used by nodes in the same swarm for simple packet authentication.
 # Packets carrying a different value will be discarded by routing/auth checks.
 GROUP_SHARED_PASSWORD = "group_shared_password"
+# Shared secret key for HMAC-based authentication (bytes-string when used)
+GROUP_SHARED_KEY = "super_secret_shared_key"
+# HMAC algorithm to use (must match a function in hashlib, e.g. 'sha256')
+HMAC_ALGO = "sha256"
+# time window (in simulation steps) within which a packet timestamp is considered valid
+HMAC_TIME_WINDOW = 100

@@ -101,6 +101,13 @@ class AODVRouting(BASE_routing):
             self.current_n_transmission += 1
 
     def drone_reception(self, src_drone, packet: Packet, current_ts):
+        # simple authentication: discard packets that don't carry the correct group password
+        pkt_token = getattr(packet, 'auth_token', None)
+        if pkt_token != config.GROUP_SHARED_PASSWORD:
+            if config.DEBUG:
+                print(f"AODV: dropped packet from {getattr(src_drone,'identifier',src_drone)} due to auth mismatch")
+            return
+
         # handle AODV control packets first
         if isinstance(packet, RREQPacket):
             key = (packet.origin_id, packet.rreq_id)

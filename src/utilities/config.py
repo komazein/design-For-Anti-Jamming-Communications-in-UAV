@@ -124,3 +124,7 @@ NN_MODEL_PATH = "data/nnmodels/"
 # --------------- new cell probabilities -------------- #
 CELL_PROB_SIZE_R = 1.875  # the percentage of cell size with respect to drone com range
 ENABLE_PROBABILITIES = False
+# ------------------------------- AUTH / SECURITY ---------------------------- #
+# Shared password/token used by nodes in the same swarm for simple packet authentication.
+# Packets carrying a different value will be discarded by routing/auth checks.
+GROUP_SHARED_PASSWORD = "group_shared_password"

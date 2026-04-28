@@ -80,7 +80,7 @@ class Event(Entity):
 # ------------------ Packet ----------------------
 class Packet(Entity):
     """ A packet is an object created out of an event monitored on the aoi. """
-    def __init__(self, time_step_creation, simulator, event_ref: Event = None):
+    def __init__(self, time_step_creation, simulator, event_ref: Event = None, auth_token=None):
         """ the event associated to the packet, time step in which the packet was created
          as for now, every packet is an event. """
 
@@ -104,6 +104,10 @@ class Packet(Entity):
 
         self.optional_data = None  # list
         self.time_delivery = None
+
+        # authentication token / group password attached to the packet
+        # if None provided, default to the simulator-wide group shared password
+        self.auth_token = auth_token if auth_token is not None else config.GROUP_SHARED_PASSWORD
 
         # if the packet was sent with move routing or not
         self.is_move_packet = None

@@ -2,6 +2,7 @@
 from src.routing_algorithms.georouting import GeoRouting
 from src.routing_algorithms.random_routing import RandomRouting
 from src.routing_algorithms.georouting_andrea import AndreaGeoRouting
+from src.routing_algorithms.aodv_routing import AODVRouting
 
 from enum import Enum
 
@@ -86,6 +87,7 @@ class RoutingAlgorithm(Enum):
     GEO = GeoRouting
     RND = RandomRouting
     AND_GEO = AndreaGeoRouting
+    AODV = AODVRouting
 
     @staticmethod
     def keylist():
@@ -101,7 +103,7 @@ class ChannelError(Enum):
         return list(map(lambda c: c.name, ChannelError))
 
 
-ROUTING_ALGORITHM = RoutingAlgorithm.AND_GEO
+ROUTING_ALGORITHM = RoutingAlgorithm.AODV
 CHANNEL_ERROR_TYPE = ChannelError.GAUSSIAN
 
 COMMUNICATION_P_SUCCESS = 1   # float: probability to have success in a communication.

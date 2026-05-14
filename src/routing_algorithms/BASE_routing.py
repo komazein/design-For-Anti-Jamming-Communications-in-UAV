@@ -5,6 +5,8 @@ from src.utilities import utilities as util
 from src.utilities import config
 
 from scipy.stats import norm
+import hmac
+import hashlib
 import abc
 
 class BASE_routing(metaclass=abc.ABCMeta):
@@ -157,6 +159,19 @@ class BASE_routing(metaclass=abc.ABCMeta):
 
     def unicast_message(self, packet, src_drone, dst_drone, curr_step):
         """ send a message to my neigh drones"""
+        # attach HMAC/nonce if not already present
+        try:
+            if getattr(packet, 'auth_hmac', None) is None:
+                nonce = curr_step
+                msg = f"{packet.identifier}:{nonce}".encode()
+                secret = config.GROUP_SHARED_KEY.encode()
+                algo = getattr(hashlib, config.HMAC_ALGO)
+                packet.auth_nonce = nonce
+                packet.auth_hmac = hmac.new(secret, msg, algo).hexdigest()
+        except Exception:
+            # on any error, leave auth fields as-is
+            pass
+
         # Broadcast using Network dispatcher
         self.simulator.network_dispatcher.send_packet_to_medium(packet, src_drone, dst_drone, curr_step + config.LIL_DELTA)
 

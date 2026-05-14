@@ -4,5 +4,5 @@ data/plots/evaluation_tests/*
 */*/__pycache__
 .idea
 .DS_Store
-
+data/evaluation_tests/*
 

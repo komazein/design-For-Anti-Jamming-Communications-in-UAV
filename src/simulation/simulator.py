@@ -127,6 +127,19 @@ class Simulator:
         self.environment.add_drones(self.drones)
         self.environment.add_depot(self.depot)
 
+        # mark attacker nodes if attack simulation enabled
+        self.attackers = []
+        if config.ENABLE_ATTACKS:
+            n_attackers = max(1, int(self.n_drones * config.ATTACKER_FRACTION))
+            # use rnd_routing for repeatability
+            attacker_indices = list(self.rnd_routing.choice(range(self.n_drones), size=n_attackers, replace=False))
+            for idx in attacker_indices:
+                self.drones[idx].is_attacker = True
+                self.attackers.append(self.drones[idx])
+        else:
+            for d in self.drones:
+                d.is_attacker = False
+
         # Set the maximum distance between the drones and the depot
         self.max_dist_drone_depot = utilities.euclidean_distance(self.depot.coords, (self.env_width, self.env_height))
 

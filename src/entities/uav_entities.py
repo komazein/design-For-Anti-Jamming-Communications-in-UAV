@@ -107,17 +107,12 @@ class Packet(Entity):
         self.optional_data = None  # list
         self.time_delivery = None
 
-        # authentication: generate HMAC over (packet_id, time_step_creation) using shared key
-        # time_step_creation may be None for some control packets; normalize to string
-        nonce = str(self.time_step_creation) if self.time_step_creation is not None else "0"
-        msg = f"{self.identifier}:{nonce}".encode()
-        secret = config.GROUP_SHARED_KEY.encode()
-        algo = getattr(hashlib, config.HMAC_ALGO)
-        self.auth_hmac = hmac.new(secret, msg, algo).hexdigest()
-        # expose nonce for replay checks
-        self.auth_nonce = self.time_step_creation
-        # keep legacy token field for compatibility (not used for auth anymore)
-        self.auth_token = auth_token
+        # authentication related fields
+        # if None provided, default auth_token to the simulator-wide group shared password
+        self.auth_token = auth_token if auth_token is not None else config.GROUP_SHARED_PASSWORD
+        # HMAC fields (may be filled by routing layer before sending)
+        self.auth_nonce = None
+        self.auth_hmac = None
 
         # if the packet was sent with move routing or not
         self.is_move_packet = None

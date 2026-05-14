@@ -48,6 +48,15 @@ class Metrics:
 
         self.time_on_active_routing = 0
 
+        # Authentication / HMAC metrics
+        self.auth_total_incoming = 0
+        self.auth_dropped_hmac = 0
+        self.auth_dropped_replay = 0
+        self.auth_accepted = 0
+        self.auth_false_rejects = 0
+        self.auth_attacker_packets_sent = 0
+        self.auth_attacker_packets_received = 0
+
     def score(self, undelivered_penalty=1.5):
         """ returns a score for the exectued simulation: 
 
@@ -177,6 +186,35 @@ class Metrics:
         out_results["time_on_mission"] = self.time_on_mission
         out_results["all_control_packets_in_simulation"] = self.all_control_packets_in_simulation
         out_results["all_data_packets_in_simulation"] = self.all_data_packets_in_simulation
+        out_results["auth_total_incoming"] = self.auth_total_incoming
+        out_results["auth_dropped_hmac"] = self.auth_dropped_hmac
+        out_results["auth_dropped_replay"] = self.auth_dropped_replay
+        out_results["auth_accepted"] = self.auth_accepted
+        out_results["auth_false_rejects"] = self.auth_false_rejects
+        out_results["auth_attacker_packets_sent"] = self.auth_attacker_packets_sent
+        out_results["auth_attacker_packets_received"] = self.auth_attacker_packets_received
+        # derived auth evaluation metrics
+        try:
+            # detection rate computed w.r.t. attacker packets that actually reached receivers
+            out_results["auth_detection_rate"] = None if self.auth_attacker_packets_received == 0 else float(self.auth_dropped_hmac) / float(self.auth_attacker_packets_received)
+        except Exception:
+            out_results["auth_detection_rate"] = None
+
+        try:
+            out_results["auth_replay_detection_rate"] = None if self.auth_attacker_packets_received == 0 else float(self.auth_dropped_replay) / float(self.auth_attacker_packets_received)
+        except Exception:
+            out_results["auth_replay_detection_rate"] = None
+
+        try:
+            out_results["auth_false_reject_rate"] = None if self.auth_total_incoming == 0 else float(self.auth_false_rejects) / float(self.auth_total_incoming)
+        except Exception:
+            out_results["auth_false_reject_rate"] = None
+
+        # delivery ratio: fraction of generated events that reached depot
+        try:
+            out_results["delivery_ratio"] = None if self.mission_setup.get("len_simulation", 0) == 0 else float(self.number_of_events_to_depot) / float(self.number_of_generated_events) if self.number_of_generated_events > 0 else None
+        except Exception:
+            out_results["delivery_ratio"] = None
         out_results["all_events"] = [ev.to_json() for ev in self.events]
         out_results["not_listened_events"] = [ev.to_json() for ev in self.events_not_listened]
         out_results["events_delivery_times"] = [str(e) for e in self.event_delivery_times]

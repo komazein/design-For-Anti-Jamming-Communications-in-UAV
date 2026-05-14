@@ -128,9 +128,22 @@ ENABLE_PROBABILITIES = False
 # Shared password/token used by nodes in the same swarm for simple packet authentication.
 # Packets carrying a different value will be discarded by routing/auth checks.
 GROUP_SHARED_PASSWORD = "group_shared_password"
+GROUP_SHARED_KEY = "group_shared_key"  # symmetric key used for HMAC
+HMAC_ALGO = "sha256"
+HMAC_TIME_WINDOW = 5  # allowed difference (in time steps) for timestamp nonce
+
+# Attack simulation parameters
+ENABLE_ATTACKS = False
+ATTACKER_FRACTION = 0.2  # fraction of drones that are attackers
+ATTACK_TYPES = ["spoof", "replay"]  # supported attack types
+ATTACK_INJECTION_RATE = 0.02  # probability per attacker per time step to inject a malicious packet
+CAPTURED_PACKET_CACHE_SIZE = 200  # max number of captured packets stored for replay attacks
+CAPTURE_BUFFER_SIZE = 500  # max number of captured packets to keep for replay attacks
 # Shared secret key for HMAC-based authentication (bytes-string when used)
 GROUP_SHARED_KEY = "super_secret_shared_key"
 # HMAC algorithm to use (must match a function in hashlib, e.g. 'sha256')
 HMAC_ALGO = "sha256"
 # time window (in simulation steps) within which a packet timestamp is considered valid
 HMAC_TIME_WINDOW = 100
+# Enable or disable HMAC-based authentication (for comparison experiments)
+USE_HMAC = True

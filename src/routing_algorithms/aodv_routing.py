@@ -102,38 +102,73 @@ class AODVRouting(BASE_routing):
 
     def drone_reception(self, src_drone, packet: Packet, current_ts):
         # HMAC authentication + replay protection:
+        # metrics: count every incoming packet for auth
+        try:
+            self.simulator.metrics.auth_total_incoming += 1
+        except Exception:
+            pass
+
         pkt_hmac = getattr(packet, 'auth_hmac', None)
         pkt_nonce = getattr(packet, 'auth_nonce', None)
 
-        try:
-            secret = config.GROUP_SHARED_KEY.encode()
-            algo = __import__('hashlib').__getattribute__(config.HMAC_ALGO)
-            expected = __import__('hmac').new(secret, f"{packet.identifier}:{str(pkt_nonce if pkt_nonce is not None else 0)}".encode(), algo).hexdigest()
-        except Exception:
-            if config.DEBUG:
-                print("AODV: error computing expected HMAC")
-            return
-
-        # constant-time compare
-        if not __import__('hmac').compare_digest(expected, str(pkt_hmac)):
-            if config.DEBUG:
-                print(f"AODV: dropped packet from {getattr(src_drone,'identifier',src_drone)} due to HMAC mismatch")
-            return
-
-        # replay protection: if packet timestamp exists, require it to be within window
-        if pkt_nonce is not None:
+        if config.USE_HMAC:
             try:
-                if abs(current_ts - int(pkt_nonce)) > config.HMAC_TIME_WINDOW:
-                    if config.DEBUG:
-                        print(f"AODV: dropped packet from {getattr(src_drone,'identifier',src_drone)} due to HMAC timestamp outside window")
-                    return
+                secret = config.GROUP_SHARED_KEY.encode()
+                algo = __import__('hashlib').__getattribute__(config.HMAC_ALGO)
+                expected = __import__('hmac').new(secret, f"{packet.identifier}:{str(pkt_nonce if pkt_nonce is not None else 0)}".encode(), algo).hexdigest()
             except Exception:
-                # if nonce not int-castable, drop
                 if config.DEBUG:
-                    print("AODV: dropped packet due to invalid HMAC nonce")
+                    print("AODV: error computing expected HMAC")
+                try:
+                    self.simulator.metrics.auth_false_rejects += 1
+                except Exception:
+                    pass
                 return
 
-        # handle AODV control packets first
+            # constant-time compare
+            # debug: print expected vs received for attacker-injected packets
+            try:
+                if getattr(src_drone, 'is_attacker', False) and config.DEBUG:
+                    print(f"AODV DEBUG: src={getattr(src_drone,'identifier',src_drone)} pkt_hmac={pkt_hmac} expected={expected} pkt_nonce={pkt_nonce}")
+            except Exception:
+                pass
+            if not __import__('hmac').compare_digest(expected, str(pkt_hmac)):
+                if config.DEBUG:
+                    print(f"AODV: dropped packet from {getattr(src_drone,'identifier',src_drone)} due to HMAC mismatch")
+                try:
+                    self.simulator.metrics.auth_dropped_hmac += 1
+                except Exception:
+                    pass
+                return
+
+            # replay protection: if packet timestamp exists, require it to be within window
+            if pkt_nonce is not None:
+                try:
+                    if abs(current_ts - int(pkt_nonce)) > config.HMAC_TIME_WINDOW:
+                        if config.DEBUG:
+                            print(f"AODV: dropped packet from {getattr(src_drone,'identifier',src_drone)} due to HMAC timestamp outside window")
+                        try:
+                            self.simulator.metrics.auth_dropped_replay += 1
+                        except Exception:
+                            pass
+                        return
+                except Exception:
+                    # if nonce not int-castable, drop
+                    if config.DEBUG:
+                        print("AODV: dropped packet due to invalid HMAC nonce")
+                    return
+
+            # handle AODV control packets first
+            try:
+                self.simulator.metrics.auth_accepted += 1
+            except Exception:
+                pass
+        else:
+            # HMAC disabled: accept packets (for comparison experiments)
+            try:
+                self.simulator.metrics.auth_accepted += 1
+            except Exception:
+                pass
         if isinstance(packet, RREQPacket):
             key = (packet.origin_id, packet.rreq_id)
             if key in self._seen_rreq:

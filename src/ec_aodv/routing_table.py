@@ -1,6 +1,12 @@
 """Routing table supporting primary and backup routes with metrics"""
 from collections import defaultdict
 
+# 
+# 本模块实现一个支持主/备路由的路由表数据结构：
+# - `RouteEntry`：表示单条路由（目的地、路径、平均能量/拥塞、跳数与路径度量）。
+# - `RoutingTable`：维护 `primary`（每个目的地的主路由）和 `backups`（每个目的地的备份路由列表），
+#    并提供更新主路由、添加备份、获取/弹出最佳备份及移除包含指定节点的路由等操作。
+
 
 class RouteEntry:
     def __init__(self, dest, path, avg_residual, avg_congestion, hop_count, overall_metric):
@@ -63,3 +69,6 @@ class RoutingTable:
                 self.backups[d] = newlst
             else:
                 del self.backups[d]
+
+# 说明：RoutingTable 提供对主/备路由的管理策略：备份路由按 path_metric 降序排列，弹出或移除操作
+# 有助于在主路由失效时快速切换到质量最好的备份路由。

@@ -6,6 +6,17 @@ from .routing_table import RoutingTable, RouteEntry
 from .route_manager import overall_metric
 import time
 
+# ：
+# 本模块实现了 EC-AODV 协议在节点级别的模拟：
+# - 每个 `Node` 对象维护能量模型（`EnergyModel`）、拥塞模型（`CongestionModel`）、路由表（`RoutingTable`）和邻居列表。
+# - 节点支持发送/接收报文、广播、处理 RREQ/RREP/RERR 控制报文，以及路由维护（主/备路由切换）。
+# - 关键函数：
+#   - `send_packet`：模拟发送行为（消耗发送能量、入队、溢出处理并立即传输给邻居）。
+#   - `receive_packet`：接收并分派到不同的控制包处理器 `_handle_rreq/_handle_rrep/_handle_rerr`。
+#   - `_handle_rreq`：处理收到的 RREQ，计算并传播平均能量/拥塞信息；当节点为目的地时生成 RREP。
+#   - `_handle_rrep`：RREP 返程时更新路由表（主/备），并将 RREP 继续向 origin 传回。
+#   - `_handle_rerr`：收到 RERR 时删除包含不可达节点的路由并尝试切换到备份路由。
+
 
 ENERGY_THRESHOLD = 0.3
 
@@ -47,10 +58,15 @@ class Node:
         dst_node.receive_packet(pkt, self)
         return True
 
+    # 说明：本实现为简化的模拟：发送操作会立刻将包从队列中出队并传递给目标节点的 `receive_packet`，
+    # 因此这里把队列主要作为拥塞/溢出检测手段，而非精确的物理传输建模。
+
     def broadcast(self, pkt):
         for n in list(self.neighbors):
             # send a shallow copy conceptually
             self.send_packet(pkt, n)
+
+    # 说明：broadcast 在模拟中将包发给所有当前邻居（逐个调用 send_packet）。
 
     def receive_packet(self, pkt, sender):
         # simulate rx cost
@@ -65,6 +81,8 @@ class Node:
             self._handle_rrep(pkt, sender)
         elif isinstance(pkt, RERR):
             self._handle_rerr(pkt, sender)
+
+    # 说明：receive_packet 会根据收到报文的类型调度到具体处理函数。接收时也会消耗接收能量。
 
     def _handle_rreq(self, rreq, sender):
         key = (rreq.origin, rreq.seq, tuple(rreq.path))
@@ -99,6 +117,10 @@ class Node:
         self.log('RREQ', f"forwarding origin={rreq.origin} tentative_metric={metric:.4f}")
         self.broadcast(new_rreq)
 
+    # 说明：
+    # - RREQ 在传播过程中记录并更新路径的平均残余能量与平均拥塞度量；
+    # - 只有当中继节点能量高于阈值时才继续转发；目的节点会基于累计度量计算整体 metric 并生成 RREP。
+
     def _send_rrep_back(self, rrep):
         # path contains nodes from origin to this node; need to traverse back
         path = list(rrep.path)
@@ -119,6 +141,8 @@ class Node:
                 self.log('RERR', f"cannot send RREP back, emit RERR unreachable={next_hop}")
                 self.broadcast(rerr)
                 return
+
+    # 说明：_send_rrep_back 将 RREP 沿着 RREQ 的反向路径逐跳发送回原始发起者；若中间某跳不可达则生成并广播 RERR。
 
     def _handle_rrep(self, rrep, sender):
         # RREP traverses back to origin; each intermediate node updates routing table
@@ -159,6 +183,9 @@ class Node:
                     self.log('RERR', f"RREP forward failed to {prev_hop}, emit RERR")
                     self.broadcast(rerr)
 
+    # 说明：当 RREP 到达原始 RREQ 发起节点时，发起节点会在路由表中安装主路由或将其作为备份。
+    # 中间节点在转发 RREP 时也会安装到目的节点（RREP.origin）的路由条目，便于后续数据转发。
+
     def _handle_rerr(self, rerr, sender):
         self.log('RERR', f"recv from {sender.id} unreachable={rerr.unreachable_node} status={rerr.status_flag}")
         # remove any route containing unreachable node
@@ -174,6 +201,8 @@ class Node:
         # otherwise propagate RERR
         self.broadcast(rerr)
 
+    # 说明：收到 RERR 表明某节点不可达，节点会清除受影响的路由并尝试用备份路由替换主路由，若无备份则继续广播 RERR。
+
     # Route maintenance triggers
     def handle_queue_overflow(self):
         self.log('CONGESTION', 'queue overflow detected, attempting backup switch')
@@ -184,6 +213,8 @@ class Node:
                 self.routing_table.update_primary(dest, backup)
                 self.log('BACKUP_ROUTE', f"switched to backup for {dest} path={backup.path}")
 
+    # 说明：当本节点检测到发送队列溢出时，会尝试为所有受影响目标切换到备份路由以缓解拥塞。
+
     def handle_energy_threshold(self):
         # if my energy below threshold, inform neighbors via RERR (warning)
         if self.energy.nre() < ENERGY_THRESHOLD:
@@ -192,3 +223,5 @@ class Node:
             for dest in list(self.routing_table.primary.keys()):
                 rerr = RERR(origin=self.id, dest=dest, unreachable_node=self.id, status_flag=RERRStatus.LINK_WARNING)
                 self.broadcast(rerr)
+
+    # 说明：当本节点能量低于阈值时，会通知邻居（通过 `RERR` 状态为 LINK_WARNING），以便其他节点在路由选择时避开低能量节点。

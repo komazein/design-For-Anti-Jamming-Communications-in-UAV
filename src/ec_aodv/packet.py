@@ -2,6 +2,12 @@
 from enum import Enum
 import time
 
+# ：
+# 定义 EC-AODV 使用的三类控制包：
+# - `RREQ`：路由请求，包含发起节点、目的节点、序列号、跳数，以及发送节点的能量/拥塞度量和路径累计平均值；
+# - `RREP`：路由回复，由能直接到达 depot（或目的节点）的节点发出，携带整条路径以及计算得到的总体度量（用于主/备路由选择）；
+# - `RERR`：路由错误，用于通知网络中某个节点不可达或发出警告（LINK_BREAK / LINK_WARNING）。
+
 
 class RERRStatus(Enum):
     LINK_BREAK = 1
@@ -72,3 +78,6 @@ class RERR:
         self.status_flag = status_flag
         self.info = info
         self.timestamp = time.time()
+
+# 说明：各控制包类仅作为数据容器，不包含网络传输逻辑。`copy_for_forward` 方法用于在中继节点
+# 构造一个新的 RREQ（更新 hop_count、平均能量与拥塞，以及路径信息），便于洪泛传播时累积度量信息。

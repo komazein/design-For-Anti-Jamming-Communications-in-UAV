@@ -105,7 +105,7 @@ class ChannelError(Enum):
         return list(map(lambda c: c.name, ChannelError))
 
 
-ROUTING_ALGORITHM = RoutingAlgorithm.AND_GEO  # RoutingAlgorithm.GEO  # RoutingAlgorithm.RND  # RoutingAlgorithm.AODV  # RoutingAlgorithm.AND_GEO  # RoutingAlgorithm.EC_AODV
+ROUTING_ALGORITHM = RoutingAlgorithm.EC_AODV  # RoutingAlgorithm.GEO  # RoutingAlgorithm.RND  # RoutingAlgorithm.AODV  # RoutingAlgorithm.AND_GEO  # RoutingAlgorithm.EC_AODV
 CHANNEL_ERROR_TYPE = ChannelError.GAUSSIAN
 
 COMMUNICATION_P_SUCCESS = 1   # float: probability to have success in a communication.

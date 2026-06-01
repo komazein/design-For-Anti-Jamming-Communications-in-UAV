@@ -2,6 +2,13 @@
 from ec_aodv.ec_aodv import Node
 from ec_aodv.packet import RREQ
 
+# ：
+# 本脚本是 EC-AODV 协议的简单演示：
+# - 构建一个线性拓扑（A-B-C-D）并额外添加一条备用路径 A-E-D；
+# - 节点 A 发起 RREQ 寻找到 D 的路径；
+# - 随后模拟节点 C 能量耗尽触发 RERR，从而演示主路由失效与备份切换流程。
+
+
 
 def build_linear_topology():
     # create nodes A,B,C,D
